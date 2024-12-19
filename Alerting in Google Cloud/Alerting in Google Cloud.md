@@ -6,7 +6,9 @@
 
 ```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/blob/main/Alerting%20in%20Google%20Cloud/cloudgoodies.sh
+
 sudo chmod +x cloudgoodies.sh
+
 ./cloudgoodies.sh
 ```
 
