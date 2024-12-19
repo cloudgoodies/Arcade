@@ -1,4 +1,5 @@
-#Configuring Traffic Blocklisting with Google Cloud Armor
+# Configuring Traffic Blocklisting with Google Cloud Armor
+
 
 ```
 export ZONE=
@@ -9,6 +10,7 @@ gcloud compute instances create access-test --zone=$ZONE
 gcloud compute ssh access-test --zone=us-central1-a --command="curl -m1 {IP_ADDRESS}"
 ```
 
+# Wait 5-6 minutes for task 3 check my progress.
 
 ```
 gcloud compute security-policies create blocklist-access-test --description="Block access from access-test VM" && \
