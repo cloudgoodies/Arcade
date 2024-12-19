@@ -11,7 +11,7 @@ export ZONE=
 
 ```
 gcloud compute instances create access-test --zone=$ZONE
-gcloud compute ssh access-test --zone=us-central1-a --command="curl -m1 {IP_ADDRESS}"
+gcloud compute ssh access-test --zone=$ZONE --command="curl -m1 {IP_ADDRESS}"
 ```
 
 # Wait 5-6 minutes for task 3 check my progress.
