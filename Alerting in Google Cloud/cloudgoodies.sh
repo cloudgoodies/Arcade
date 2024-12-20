@@ -1,124 +1,58 @@
-
 #!/bin/bash
 
-# Exit on error
-set -e
-
-echo "Starting Google Cloud Lab Automation Script..."
-
-# Clone repository and navigate to folder
+# Clone repo and install dependencies
 git clone --depth 1 https://github.com/GoogleCloudPlatform/training-data-analyst.git
 cd ~/training-data-analyst/courses/design-process/deploying-apps-to-gcp
+sudo pip install -r requirements.txt
 
-# Install dependencies and test application locally
-pip3 install -r requirements.txt
-python3 main.py &
-sleep 5
-kill $!
-
-# Create app.yaml
-echo "runtime: python312" > app.yaml
-
-# Create App Engine application
-echo "Creating App Engine application..."
-gcloud app create --region=us-central
-
-# Deploy application
-echo "Deploying App Engine application..."
+# Setup app.yaml and deploy to App Engine
+echo "runtime: python39" > app.yaml
+gcloud app create --region=$REGION
 gcloud app deploy --version=one --quiet
 
-# Create Alerting Policy for Latency
-echo "Creating Latency Alerting Policy..."
-gcloud alpha monitoring channels create --display-name="My Email" --type=email --channel-labels=email_address="your-email@example.com"
-
-# Update main.py with delay
-sed -i 's/return render_template/    time.sleep(10)\n    return render_template/' main.py
-
-# Redeploy application with latency
-echo "Redeploying application with latency..."
-gcloud app deploy --version=two --quiet
-
-# Generate load
-echo "Generating load for latency testing..."
-while true; do
-  curl -s https://$DEVSHELL_PROJECT_ID.appspot.com/ | grep -e "<title>" -e "error"
-  sleep .$((RANDOM % 10))s
-done &
-
-# Wait and allow alerts to fire
-sleep 300
-kill $!
-
-# Create JSON file for HTTP error alerting policy
-cat <<EOF > app-engine-error-percent-policy.json
+# Create Pub/Sub channel for monitoring
+cat > pubsub-channel.json <<EOF
 {
-    "displayName": "HTTP error count exceeds 1 percent for App Engine apps",
-    "combiner": "OR",
-    "conditions": [
-        {
-            "displayName": "Ratio: HTTP 500s error-response counts / All HTTP response counts",
-            "conditionThreshold": {
-                "filter": "metric.label.response_code>=\"500\" AND metric.label.response_code<\"600\" AND metric.type=\"appengine.googleapis.com/http/server/response_count\" AND resource.type=\"gae_app\"",
-                "aggregations": [
-                    {
-                        "alignmentPeriod": "60s",
-                        "crossSeriesReducer": "REDUCE_SUM",
-                        "groupByFields": [
-                            "project",
-                            "resource.label.module_id",
-                            "resource.label.version_id"
-                        ],
-                        "perSeriesAligner": "ALIGN_DELTA"
-                    }
-                ],
-                "denominatorFilter": "metric.type=\"appengine.googleapis.com/http/server/response_count\" AND resource.type=\"gae_app\"",
-                "denominatorAggregations": [
-                    {
-                        "alignmentPeriod": "60s",
-                        "crossSeriesReducer": "REDUCE_SUM",
-                        "groupByFields": [
-                            "project",
-                            "resource.label.module_id",
-                            "resource.label.version_id"
-                        ],
-                        "perSeriesAligner": "ALIGN_DELTA"
-                    }
-                ],
-                "comparison": "COMPARISON_GT",
-                "thresholdValue": 0.01,
-                "duration": "0s",
-                "trigger": {
-                    "count": 1
-                }
-            }
-        }
-    ]
+  "type": "pubsub",
+  "labels": {
+    "topic": "projects/$DEVSHELL_PROJECT_ID/topics/notificationTopic"
+  }
 }
 EOF
+gcloud beta monitoring channels create --channel-content-from-file="pubsub-channel.json"
 
-# Deploy HTTP error alerting policy
+# Create monitoring alert policy
+channel_id=$(gcloud beta monitoring channels list | grep -oP 'name: \K[^ ]+' | head -n 1)
+cat > app-engine-error-percent-policy.json <<EOF
+{
+  "displayName": "Hello too slow",
+  "conditions": [{
+    "displayName": "Response latency [MEAN] for 99th% over 8s",
+    "conditionThreshold": {
+      "filter": "resource.type = \"gae_app\" AND metric.type = \"appengine.googleapis.com/http/server/response_latencies\"",
+      "aggregations": [{ "alignmentPeriod": "60s", "crossSeriesReducer": "REDUCE_NONE", "perSeriesAligner": "ALIGN_PERCENTILE_99" }],
+      "comparison": "COMPARISON_GT", "duration": "0s", "trigger": { "count": 1 }, "thresholdValue": 8000
+    }
+  }],
+  "alertStrategy": { "autoClose": "604800s" },
+  "enabled": true,
+  "notificationChannels": ["$channel_id"]
+}
+EOF
 gcloud alpha monitoring policies create --policy-from-file="app-engine-error-percent-policy.json"
 
-# Update main.py for random errors
-sed -i 's/return render_template/    if random.randrange(49) == 0:\n        return json.dumps({"error": "Error thrown randomly"}), 500\n    return render_template/' main.py
+# Deploy updated app with simulated latency
+cat > main.py <<EOF
+from flask import Flask, render_template
+import time
+app = Flask(__name__)
 
-# Redeploy application with random errors
-gcloud app deploy --version=three --quiet
+@app.route("/")
+def main():
+    time.sleep(10)  # Simulate delay
+    return render_template('index.html', model={"title": "Hello GCP."})
+EOF
+gcloud app deploy --version=two --quiet
 
-# Generate load for error testing
-echo "Generating load for error testing..."
-while true; do
-  curl -s https://$DEVSHELL_PROJECT_ID.appspot.com/ | grep -e "<title>" -e "error"
-  sleep .$((RANDOM % 10))s
-done &
-
-# Wait and allow alerts to fire
-sleep 300
-kill $!
-
-
-# Clean up notification channels and policies
-echo "Cleaning up..."
-gcloud alpha monitoring policies delete --all --quiet
-
-echo "Google Cloud Lab Automation Completed!"
+# Test app latency and error handling
+while true; do curl -s https://$DEVSHELL_PROJECT_ID.appspot.com/ | grep -e "<title>" -e "error"; sleep .$((RANDOM % 10)); done
