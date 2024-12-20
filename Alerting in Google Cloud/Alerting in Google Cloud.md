@@ -12,12 +12,3 @@ sudo chmod +x cloudgoodies.sh
 ./cloudgoodies.sh
 ```
 
-# If task 4 does not get completed then run below command
-
-```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Alerting%20in%20Google%20Cloud/cloudgoodies1.sh
-
-sudo chmod +x cloudgoodies1.sh
-
-./cloudgoodies1.sh
-```
