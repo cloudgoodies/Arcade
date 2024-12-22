@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Define color variables
 BLACK=$(tput setaf 0)
 RED=$(tput setaf 1)
@@ -22,60 +21,57 @@ BG_WHITE=$(tput setab 7)
 BOLD=$(tput bold)
 RESET=$(tput sgr0)
 
-# Array of color codes excluding black and white
-TEXT_COLORS=("$RED" "$GREEN" "$YELLOW" "$BLUE" "$MAGENTA" "$CYAN")
-BG_COLORS=("$BG_RED" "$BG_GREEN" "$BG_YELLOW" "$BG_BLUE" "$BG_MAGENTA" "$BG_CYAN")
+# Array of colors
+TEXT_COLORS=($RED $GREEN $YELLOW $BLUE $MAGENTA $CYAN)
+BG_COLORS=($BG_RED $BG_GREEN $BG_YELLOW $BG_BLUE $BG_MAGENTA $BG_CYAN)
 
-# Function to generate a random color combination
-function random_color_combination() {
-    local text_color=${TEXT_COLORS[RANDOM % ${#TEXT_COLORS[@]}]}
-    local bg_color=${BG_COLORS[RANDOM % ${#BG_COLORS[@]}]}
-    echo "$bg_color$text_color$BOLD"
-}
+# Pick random colors
+RANDOM_TEXT_COLOR=${TEXT_COLORS[$RANDOM % ${#TEXT_COLORS[@]}]}
+RANDOM_BG_COLOR=${BG_COLORS[$RANDOM % ${#BG_COLORS[@]}]}
 
-# Function to check user progress
-function prompt_user_progress() {
-    local prompt_message="${BOLD}${YELLOW}Have you created the sink 'AuditLogsExport'? (Y/N): ${RESET}"
-    local invalid_input_message="${BOLD}${MAGENTA}Invalid input. Please enter Y or N.${RESET}"
-    local incomplete_message="${BOLD}${RED}Please create the sink and then press Y to continue.${RESET}"
-    local success_message="${BOLD}${CYAN}Great! Proceeding to the next steps...${RESET}"
-
+# Function to handle progress prompt
+check_progress() {
     while true; do
-        echo
-        echo -n "$prompt_message"
+        echo -n "${BOLD}${YELLOW}Have you created sink AuditLogsExport? (Y/N): ${RESET}"
         read -r user_input
         case "$user_input" in
-            [Yy])
-                echo
-                echo "$success_message"
-                echo
+            [Yy]*) 
+                echo "${BOLD}${CYAN}Great! Proceeding to the next steps...${RESET}"
                 break
                 ;;
-            [Nn])
-                echo
-                echo "$incomplete_message"
+            [Nn]*) 
+                echo "${BOLD}${RED}Please create sink named AuditLogsExport and then press Y to continue.${RESET}"
                 ;;
-            *)
-                echo
-                echo "$invalid_input_message"
+            *) 
+                echo "${BOLD}${MAGENTA}Invalid input. Please enter Y or N.${RESET}"
                 ;;
         esac
     done
 }
 
-# Display a random start message
-echo "$(random_color_combination)Starting Execution${RESET}"
+# Function to handle errors
+exit_on_failure() {
+    if [ $? -ne 0 ]; then
+        echo "${BOLD}${RED}Error occurred. Exiting.${RESET}"
+        exit 1
+    fi
+}
 
-# Step 1: Setting default zone
-echo -e "${CYAN}${BOLD}Setting the default zone...${RESET}"
+# Start execution
+echo "${RANDOM_BG_COLOR}${RANDOM_TEXT_COLOR}${BOLD}Starting Execution${RESET}"
+
+# Step 1: Setting the default zone
+echo "${CYAN}${BOLD}Setting the default zone...${RESET}"
 ZONE=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
+exit_on_failure
 
-# Step 2: Export IAM policy
-echo -e "${MAGENTA}${BOLD}Exporting IAM policy to policy.json...${RESET}"
+# Step 2: Exporting current IAM policy
+echo "${MAGENTA}${BOLD}Exporting the current IAM policy to policy.json...${RESET}"
 gcloud projects get-iam-policy "$DEVSHELL_PROJECT_ID" --format=json > policy.json
+exit_on_failure
 
-# Step 3: Update IAM policy
-echo -e "${BLUE}${BOLD}Updating IAM policy to enable audit logging...${RESET}"
+# Step 3: Updating IAM policy for audit logging
+echo "${BLUE}${BOLD}Updating IAM policy for audit logging...${RESET}"
 jq '.auditConfigs = [
   {
     "service": "allServices",
@@ -86,69 +82,85 @@ jq '.auditConfigs = [
     ]
   }
 ] | .' policy.json > updated_policy.json
+exit_on_failure
 
-# Step 4: Apply updated IAM policy
-echo -e "${GREEN}${BOLD}Applying the updated IAM policy...${RESET}"
-gcloud projects set-iam-policy "$DEVSHELL_PROJECT_ID" updated_policy.json
+# Step 4: Applying the updated IAM policy
+echo "${GREEN}${BOLD}Applying the updated IAM policy...${RESET}"
+gcloud projects set-iam-policy "$DEVSHELL_PROJECT_ID" ./updated_policy.json
+exit_on_failure
 
-# Step 5: Create BigQuery dataset
-echo -e "${YELLOW}${BOLD}Creating a BigQuery dataset named 'auditlogs_dataset'...${RESET}"
+# Step 5: Creating BigQuery dataset
+echo "${YELLOW}${BOLD}Creating BigQuery dataset 'auditlogs_dataset'...${RESET}"
 bq --location=US mk --dataset "$DEVSHELL_PROJECT_ID:auditlogs_dataset"
+exit_on_failure
 
-# Step 6: Display Logs Explorer instructions
-echo -e "${RED}${BOLD}Visit the Logs Explorer in GCP Console...${RESET}"
-echo
-echo "Go to: https://console.cloud.google.com/logs/query"
-echo "Copy this filter: logName = (\"projects/$DEVSHELL_PROJECT_ID/logs/cloudaudit.googleapis.com%2Factivity\")"
-echo "SINK NAME: AuditLogsExport"
-echo
+# Prompt user to proceed
+check_progress
 
-# Prompt user to check progress
-prompt_user_progress
-
-# Step 7: Cloud Storage bucket setup
-echo -e "${BLUE}${BOLD}Creating Cloud Storage bucket and uploading sample file...${RESET}"
+# Step 6: Setting up Cloud Storage bucket
+echo "${BLUE}${BOLD}Setting up Cloud Storage bucket and uploading a sample file...${RESET}"
 gsutil mb gs://"$DEVSHELL_PROJECT_ID"
 echo "this is a sample file" > sample.txt
 gsutil cp sample.txt gs://"$DEVSHELL_PROJECT_ID"
+exit_on_failure
 
-# Step 8: Create VPC network and VM instance
-echo -e "${MAGENTA}${BOLD}Creating a VPC network and VM instance...${RESET}"
+# Step 7: Creating VPC network and VM instance
+echo "${MAGENTA}${BOLD}Creating VPC network and VM instance...${RESET}"
 gcloud compute networks create mynetwork --subnet-mode=auto
-gcloud compute instances create default-us-vm \
-    --machine-type=e2-micro \
-    --zone="$ZONE" --network=mynetwork
+gcloud compute instances create default-us-vm --machine-type=e2-micro --zone="$ZONE" --network=mynetwork
+exit_on_failure
 
-# Step 9: Delete bucket and capture logs
-echo -e "${GREEN}${BOLD}Deleting bucket and capturing logs...${RESET}"
+# Step 8: Deleting bucket and capturing logs
+echo "${GREEN}${BOLD}Deleting bucket and capturing logs...${RESET}"
 gsutil rm -r gs://"$DEVSHELL_PROJECT_ID"
-gcloud logging read \
-    "logName=projects/$DEVSHELL_PROJECT_ID/logs/cloudaudit.googleapis.com%2Factivity AND protoPayload.serviceName=storage.googleapis.com AND protoPayload.methodName=storage.buckets.delete"
+gcloud logging read "logName=projects/$DEVSHELL_PROJECT_ID/logs/cloudaudit.googleapis.com%2Factivity AND protoPayload.serviceName=storage.googleapis.com AND protoPayload.methodName=storage.buckets.delete"
+exit_on_failure
 
-# Step 10: Delete files matching specific patterns
-function remove_files_by_pattern() {
-    local patterns=("gsp*" "arc*" "shell*")
-    for pattern in "${patterns[@]}"; do
-        for file in $pattern; do
+# Step 9: Creating another bucket and testing
+echo "${YELLOW}${BOLD}Creating another bucket and testing...${RESET}"
+gsutil mb gs://"$DEVSHELL_PROJECT_ID-test"
+echo "this is another sample file" > sample2.txt
+gsutil cp sample2.txt gs://"$DEVSHELL_PROJECT_ID-test"
+exit_on_failure
+
+# Step 10: Deleting VM instance
+echo "${RED}${BOLD}Deleting VM instance...${RESET}"
+gcloud compute instances delete default-us-vm --zone="$ZONE" --delete-disks=all --quiet
+exit_on_failure
+
+# Step 11: Querying BigQuery for logs
+echo "${CYAN}${BOLD}Querying BigQuery for logs...${RESET}"
+bq query --nouse_legacy_sql --project_id="$DEVSHELL_PROJECT_ID" '
+SELECT
+  timestamp,
+  resource.labels.instance_id,
+  protopayload_auditlog.authenticationInfo.principalEmail,
+  protopayload_auditlog.resourceName,
+  protopayload_auditlog.methodName
+FROM
+  `auditlogs_dataset.cloudaudit_googleapis_com_activity_*`
+WHERE
+  PARSE_DATE("%Y%m%d", _TABLE_SUFFIX) BETWEEN
+  DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY) AND
+  CURRENT_DATE()
+  AND protopayload_auditlog.methodName = "v1.compute.instances.delete"
+LIMIT 1000'
+exit_on_failure
+
+# Step 12: Display a random congratulatory message
+echo "${BOLD}${GREEN}Congratulations! You have successfully completed the lab.${RESET}"
+
+# Clean up files
+echo "${CYAN}${BOLD}Cleaning up generated files...${RESET}"
+remove_files() {
+    for file in *; do
+        if [[ "$file" == gsp* || "$file" == arc* || "$file" == shell* ]]; then
             if [[ -f "$file" ]]; then
                 rm "$file"
-                echo "Removed file: $file"
+                echo "File removed: $file"
             fi
-        done
+        fi
     done
 }
 
-remove_files_by_pattern
-
-# Display random congratulations
-function display_random_congratulations() {
-    local messages=(
-        "${GREEN}Congratulations! You’ve completed the lab!${RESET}"
-        "${CYAN}Well done! Keep up the great work!${RESET}"
-        "${YELLOW}Fantastic effort! You’ve succeeded!${RESET}"
-        "${BLUE}Amazing job! You’re on a roll!${RESET}"
-    )
-    echo -e "${BOLD}${messages[RANDOM % ${#messages[@]}]}"
-}
-
-display_random_congratulations
+remove_files
