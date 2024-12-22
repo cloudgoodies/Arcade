@@ -1,26 +1,26 @@
 #!/bin/bash
 # Define color variables
 
-CLR_BLACK=tput setaf 0
-CLR_RED=tput setaf 1
-CLR_GREEN=tput setaf 2
-CLR_YELLOW=tput setaf 3
-CLR_BLUE=tput setaf 4
-CLR_MAGENTA=tput setaf 5
-CLR_CYAN=tput setaf 6
-CLR_WHITE=tput setaf 7
+CLR_BLACK=`tput setaf 0`
+CLR_RED=`tput setaf 1`
+CLR_GREEN=`tput setaf 2`
+CLR_YELLOW=`tput setaf 3`
+CLR_BLUE=`tput setaf 4`
+CLR_MAGENTA=`tput setaf 5`
+CLR_CYAN=`tput setaf 6`
+CLR_WHITE=`tput setaf 7`
 
-BG_CLR_BLACK=tput setab 0
-BG_CLR_RED=tput setab 1
-BG_CLR_GREEN=tput setab 2
-BG_CLR_YELLOW=tput setab 3
-BG_CLR_BLUE=tput setab 4
-BG_CLR_MAGENTA=tput setab 5
-BG_CLR_CYAN=tput setab 6
-BG_CLR_WHITE=tput setab 7
+BG_CLR_BLACK=`tput setab 0`
+BG_CLR_RED=`tput setab 1`
+BG_CLR_GREEN=`tput setab 2`
+BG_CLR_YELLOW=`tput setab 3`
+BG_CLR_BLUE=`tput setab 4`
+BG_CLR_MAGENTA=`tput setab 5`
+BG_CLR_CYAN=`tput setab 6`
+BG_CLR_WHITE=`tput setab 7`
 
-TXT_BOLD=tput bold
-TXT_RESET=tput sgr0
+TXT_BOLD=`tput bold`
+TXT_RESET=`tput sgr0`
 
 # Array of color codes excluding black and white
 TXT_COLOR_CODES=($CLR_RED $CLR_GREEN $CLR_YELLOW $CLR_BLUE $CLR_MAGENTA $CLR_CYAN)
