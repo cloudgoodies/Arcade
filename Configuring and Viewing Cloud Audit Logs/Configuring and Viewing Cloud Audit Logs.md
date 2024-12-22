@@ -6,7 +6,7 @@
 
 ### Run the following Commands in CloudShell
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Configuring%20and%20Viewing%20Cloud%20Audit%20Logs/script1.sh
+curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/main/Configuring%20and%20Viewing%20Cloud%20Audit%20Logs/script1.sh
 
 sudo chmod +x script1.sh
 
