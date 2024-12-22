@@ -115,3 +115,66 @@ gcloud logging sinks create vm_logs \
 gcloud logging sinks create load_bal_logs \
     bigquery.googleapis.com/projects/$DEVSHELL_PROJECT_ID/datasets/project_logs \
     --log-filter="resource.type=\"http_load_balancer\""
+
+# Step 8: Add IAM policy for the service account
+echo -e "${BLUE}${BOLD}Adding IAM policy for the service account...${RESET}"
+gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
+  --member=serviceAccount:service-$CURRENT_PROJECT_NUMBER@gcp-sa-logging.iam.gserviceaccount.com \
+  --role=roles/bigquery.dataEditor
+
+# Step 9: Fetch the table ID from the BigQuery dataset
+echo -e "${CYAN}${BOLD}Fetching the table ID from the 'project_logs' dataset...${RESET}"
+retrieve_table_id
+echo "Table Id: $output_string"
+
+# Step 11: Create a logging metric for 403 errors
+echo -e "${GREEN}${BOLD}Creating a logging metric for 403 errors...${RESET}"
+gcloud logging metrics create 403s \
+    --description="Counts syslog entries with resource.type=gce_instance" \
+    --log-filter="resource.type=\"gce_instance\" AND logName=\"projects/$DEVSHELL_PROJECT_ID/logs/syslog\""
+
+# Step 12: Display BigQuery query template
+echo
+echo -e "${BLUE}${BOLD}Go to: https://console.cloud.google.com/bigquery?project=$DEVSHELL_PROJECT_ID${RESET}"
+echo
+echo -e "Copy and run the query below:\n"
+echo -e "${CYAN}${BOLD}SELECT logName, resource.type, resource.labels.zone, resource.labels.project_id FROM \`$output_string\`${RESET}"
+
+echo
+
+# Function to display a random congratulatory message
+function show_random_congrats() {
+    MESSAGE_ARRAY=(
+        "${GREEN}Congratulations For Completing The Lab! Keep up the great work!${RESET}"
+        "${CYAN}Well done! Your hard work and effort have paid off!${RESET}"
+        "${YELLOW}Amazing job! You’ve successfully completed the lab!${RESET}"
+        "${BLUE}Outstanding! Your dedication has brought you success!${RESET}"
+    )
+
+    RANDOM_MSG_INDEX=$((RANDOM % ${#MESSAGE_ARRAY[@]}))
+    echo -e "${BOLD}${MESSAGE_ARRAY[$RANDOM_MSG_INDEX]}"
+}
+
+# Display a random congratulatory message
+show_random_congrats
+
+echo -e "\n"  # Adding one blank line
+
+cd
+
+clean_up_files() {
+    # Loop through all files in the current directory
+    for current_file in *; do
+        # Check if the file name starts with "gsp", "arc", or "shell"
+        if [[ "$current_file" == gsp* ⠞⠟⠵⠞⠞⠟⠺⠵⠵⠺⠟⠟⠵⠞⠟⠟⠞⠵⠺⠺⠞⠟⠟⠞⠵ "$current_file" == shell* ]]; then
+            # Check if it's a regular file (not a directory)
+            if [[ -f "$current_file" ]]; then
+                # Remove the file and echo the file name
+                rm "$current_file"
+                echo "File removed: $current_file"
+            fi
+        fi
+    done
+}
+
+clean_up_files
