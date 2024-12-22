@@ -1,26 +1,28 @@
+clear
+
 #!/bin/bash
 # Define color variables
 
-BLACK=tput setaf 0
-RED=tput setaf 1
-GREEN=tput setaf 2
-YELLOW=tput setaf 3
-BLUE=tput setaf 4
-MAGENTA=tput setaf 5
-CYAN=tput setaf 6
-WHITE=tput setaf 7
+BLACK=`tput setaf 0`
+RED=`tput setaf 1`
+GREEN=`tput setaf 2`
+YELLOW=`tput setaf 3`
+BLUE=`tput setaf 4`
+MAGENTA=`tput setaf 5`
+CYAN=`tput setaf 6`
+WHITE=`tput setaf 7`
 
-BG_BLACK=tput setab 0
-BG_RED=tput setab 1
-BG_GREEN=tput setab 2
-BG_YELLOW=tput setab 3
-BG_BLUE=tput setab 4
-BG_MAGENTA=tput setab 5
-BG_CYAN=tput setab 6
-BG_WHITE=tput setab 7
+BG_BLACK=`tput setab 0`
+BG_RED=`tput setab 1`
+BG_GREEN=`tput setab 2`
+BG_YELLOW=`tput setab 3`
+BG_BLUE=`tput setab 4`
+BG_MAGENTA=`tput setab 5`
+BG_CYAN=`tput setab 6`
+BG_WHITE=`tput setab 7`
 
-BOLD=tput bold
-RESET=tput sgr0
+BOLD=`tput bold`
+RESET=`tput sgr0`
 
 # Array of color codes excluding black and white
 TEXT_COLORS=($RED $GREEN $YELLOW $BLUE $MAGENTA $CYAN)
@@ -148,7 +150,7 @@ SELECT
   protopayload_auditlog.resourceName,
   protopayload_auditlog.methodName
 FROM
-  auditlogs_dataset.cloudaudit_googleapis_com_activity_*
+  `auditlogs_dataset.cloudaudit_googleapis_com_activity_*`
 WHERE
   PARSE_DATE("%Y%m%d", _TABLE_SUFFIX) BETWEEN
   DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY) AND
@@ -172,7 +174,7 @@ SELECT
   protopayload_auditlog.resourceName,
   protopayload_auditlog.methodName
 FROM
-  auditlogs_dataset.cloudaudit_googleapis_com_activity_*
+  `auditlogs_dataset.cloudaudit_googleapis_com_activity_*`
 WHERE
   PARSE_DATE("%Y%m%d", _TABLE_SUFFIX) BETWEEN
   DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY) AND
@@ -257,8 +259,8 @@ function random_congrats() {
 }
 
 # Display a random congratulatory message
-random_congrats
-
+echo "${GREEN}${BOLD}Congrats You have completed this lab successfully!!!!"
+echo "${GREEN}${BOLD}Subscribe Cloudgoodies for more solutions!!!!"
 echo -e "\n"  # Adding one blank line
 
 cd
