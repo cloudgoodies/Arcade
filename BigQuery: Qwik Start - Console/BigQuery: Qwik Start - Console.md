@@ -6,11 +6,11 @@
 
 ### Run the following Commands in CloudShell
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Configuring%20and%20Using%20Cloud%20Logging%20and%20Cloud%20Monitoring/script.sh
+curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/BigQuery%3A%20Qwik%20Start%20-%20Console/GSP072.sh
 
-sudo chmod +x script.sh
+sudo chmod +x GSP072.sh
 
-./script.sh
+./GSP072.sh
 ```
 
 ### Congratulations 🎉 for completing the Lab !
