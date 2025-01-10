@@ -26,164 +26,156 @@ RESET=$(tput sgr0)
 
 echo "${YELLOW}${BOLD}Starting${RESET}" "${GREEN}${BOLD}Execution${RESET}"
 
-# Create GetShotDistanceToGoal function
-bq query --use_legacy_sql=false "
-CREATE FUNCTION \`soccer.GetShotDistanceToGoal\`(x INT64, y INT64)
-RETURNS FLOAT64
-AS (
-  SQRT(
-    POW((100 - x) * 105 / 100, 2) +
-    POW((50 - y) * 68 / 100, 2)
-  )
-);
-"
-
-# Create GetShotAngleToGoal function
-bq query --use_legacy_sql=false "
-CREATE FUNCTION \`soccer.GetShotAngleToGoal\`(x INT64, y INT64)
-RETURNS FLOAT64
-AS (
-  SAFE.ACOS(
-    SAFE_DIVIDE(
-      (
-        POW(105 - (x * 105 / 100), 2) + POW(34 + 7.32 / 2 - (y * 68 / 100), 2) +
-        POW(105 - (x * 105 / 100), 2) + POW(34 - 7.32 / 2 - (y * 68 / 100), 2) -
-        POW(7.32, 2)
-      ),
-      (
-        2 *
-        SQRT(POW(105 - (x * 105 / 100), 2) + POW(34 + 7.32 / 2 - (y * 68 / 100), 2)) *
-        SQRT(POW(105 - (x * 105 / 100), 2) + POW(34 - 7.32 / 2 - (y * 68 / 100), 2))
-      )
+# 1. Create Functions in Parallel
+(
+  bq query --batch --use_legacy_sql=false "
+  CREATE FUNCTION \`soccer.GetShotDistanceToGoal\`(x INT64, y INT64)
+  RETURNS FLOAT64
+  AS (
+    SQRT(
+      POW((100 - x) * 105 / 100, 2) +
+      POW((50 - y) * 68 / 100, 2)
     )
-  ) * 180 / ACOS(-1)
-);
+  );
+  "
+) &
+
+(
+  bq query --batch --use_legacy_sql=false "
+  CREATE FUNCTION \`soccer.GetShotAngleToGoal\`(x INT64, y INT64)
+  RETURNS FLOAT64
+  AS (
+    SAFE.ACOS(
+      SAFE_DIVIDE(
+        (
+          POW(105 - (x * 105 / 100), 2) + POW(34 + 7.32 / 2 - (y * 68 / 100), 2) +
+          POW(105 - (x * 105 / 100), 2) + POW(34 - 7.32 / 2 - (y * 68 / 100), 2) -
+          POW(7.32, 2)
+        ),
+        (
+          2 *
+          SQRT(POW(105 - (x * 105 / 100), 2) + POW(34 + 7.32 / 2 - (y * 68 / 100), 2)) *
+          SQRT(POW(105 - (x * 105 / 100), 2) + POW(34 - 7.32 / 2 - (y * 68 / 100), 2))
+        )
+      )
+    ) * 180 / ACOS(-1)
+  );
+  "
+) &
+wait
+
+# 2. Create Temporary Table for Filtered Events (Reduces Joins and Repeated Filtering)
+bq query --batch --use_legacy_sql=false "
+CREATE OR REPLACE TABLE \`soccer.filtered_events\` AS
+SELECT
+  Events.matchId,
+  Events.subEventName AS shotType,
+  Events.positions[ORDINAL(1)].x AS x,
+  Events.positions[ORDINAL(1)].y AS y,
+  Events.tags.id AS tags,
+  (101 IN UNNEST(Events.tags.id)) AS isGoal,
+  Matches.competitionId,
+  Matches.wyId AS matchWyId,
+  Competitions.name AS competitionName
+FROM
+  \`soccer.events\` Events
+LEFT JOIN
+  \`soccer.matches\` Matches ON Events.matchId = Matches.wyId
+LEFT JOIN
+  \`soccer.competitions\` Competitions ON Matches.competitionId = Competitions.wyId
+WHERE
+  (eventName = 'Shot' OR (eventName = 'Free Kick' AND subEventName IN ('Free kick shot', 'Penalty')));
 "
 
-# Create logistic regression model
-bq query --use_legacy_sql=false "
+# 3. Create Logistic Regression Model
+bq query --batch --use_legacy_sql=false "
 CREATE MODEL \`soccer.xg_logistic_reg_model\`
 OPTIONS(
   model_type = 'LOGISTIC_REG',
   input_label_cols = ['isGoal']
 ) AS
 SELECT
-  Events.subEventName AS shotType,
-  (101 IN UNNEST(Events.tags.id)) AS isGoal,
-  \`soccer.GetShotDistanceToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotDistance,
-  \`soccer.GetShotAngleToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotAngle
+  shotType,
+  isGoal,
+  \`soccer.GetShotDistanceToGoal\`(x, y) AS shotDistance,
+  \`soccer.GetShotAngleToGoal\`(x, y) AS shotAngle
 FROM
-  \`soccer.events\` Events
-LEFT JOIN
-  \`soccer.matches\` Matches ON Events.matchId = Matches.wyId
-LEFT JOIN
-  \`soccer.competitions\` Competitions ON Matches.competitionId = Competitions.wyId
+  \`soccer.filtered_events\`
 WHERE
-  Competitions.name != 'World Cup' AND
-  (eventName = 'Shot' OR (eventName = 'Free Kick' AND subEventName IN ('Free kick shot', 'Penalty')))
-;
+  competitionName != 'World Cup';
 "
 
-# Retrieve model weights
-bq query --use_legacy_sql=false "
-SELECT * 
-FROM ML.WEIGHTS(MODEL \`soccer.xg_logistic_reg_model\`);
-"
-
-# Create boosted tree classifier model
-bq query --use_legacy_sql=false "
+# 4. Create Boosted Tree Classifier Model
+bq query --batch --use_legacy_sql=false "
 CREATE MODEL \`soccer.xg_boosted_tree_model\`
 OPTIONS(
   model_type = 'BOOSTED_TREE_CLASSIFIER',
   input_label_cols = ['isGoal']
 ) AS
 SELECT
-  Events.subEventName AS shotType,
-  (101 IN UNNEST(Events.tags.id)) AS isGoal,
-  \`soccer.GetShotDistanceToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotDistance,
-  \`soccer.GetShotAngleToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotAngle
+  shotType,
+  isGoal,
+  \`soccer.GetShotDistanceToGoal\`(x, y) AS shotDistance,
+  \`soccer.GetShotAngleToGoal\`(x, y) AS shotAngle
 FROM
-  \`soccer.events\` Events
-LEFT JOIN
-  \`soccer.matches\` Matches ON Events.matchId = Matches.wyId
-LEFT JOIN
-  \`soccer.competitions\` Competitions ON Matches.competitionId = Competitions.wyId
+  \`soccer.filtered_events\`
 WHERE
-  Competitions.name != 'World Cup' AND
-  (eventName = 'Shot' OR (eventName = 'Free Kick' AND subEventName IN ('Free kick shot', 'Penalty')))
-;
+  competitionName != 'World Cup';
 "
 
-# Generate predictions with logistic regression model
-bq query --use_legacy_sql=false "
-SELECT *
-FROM ML.PREDICT(
-  MODEL \`soccer.xg_logistic_reg_model\`,
-  (
-    SELECT
-      Events.subEventName AS shotType,
-      (101 IN UNNEST(Events.tags.id)) AS isGoal,
-      \`soccer.GetShotDistanceToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotDistance,
-      \`soccer.GetShotAngleToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotAngle
-    FROM
-      \`soccer.events\` Events
-    LEFT JOIN
-      \`soccer.matches\` Matches ON Events.matchId = Matches.wyId
-    LEFT JOIN
-      \`soccer.competitions\` Competitions ON Matches.competitionId = Competitions.wyId
-    WHERE
-      Competitions.name = 'World Cup' AND
-      (eventName = 'Shot' OR (eventName = 'Free Kick' AND subEventName IN ('Free kick shot', 'Penalty')))
-  )
-);
-"
-
-# Generate detailed predictions with additional information
-bq query --use_legacy_sql=false "
-SELECT
-  predicted_isGoal_probs[ORDINAL(1)].prob AS predictedGoalProb,
-  * EXCEPT (predicted_isGoal, predicted_isGoal_probs)
-FROM
-  ML.PREDICT(
+# 5. Generate Predictions in Parallel
+(
+  bq query --batch --use_legacy_sql=false "
+  SELECT *
+  FROM ML.PREDICT(
     MODEL \`soccer.xg_logistic_reg_model\`,
     (
       SELECT
-        Events.playerId,
-        CONCAT(Players.firstName, ' ', Players.lastName) AS playerName,
-        Teams.name AS teamName,
-        CAST(Matches.dateutc AS DATE) AS matchDate,
-        Matches.label AS match,
-        CAST(
-          (CASE
-            WHEN Events.matchPeriod = '1H' THEN 0
-            WHEN Events.matchPeriod = '2H' THEN 45
-            WHEN Events.matchPeriod = 'E1' THEN 90
-            WHEN Events.matchPeriod = 'E2' THEN 105
-            ELSE 120
-          END) + CEILING(Events.eventSec / 60) AS INT64
-        ) AS matchMinute,
-        Events.subEventName AS shotType,
-        (101 IN UNNEST(Events.tags.id)) AS isGoal,
-        \`soccer.GetShotDistanceToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotDistance,
-        \`soccer.GetShotAngleToGoal\`(Events.positions[ORDINAL(1)].x, Events.positions[ORDINAL(1)].y) AS shotAngle
+        shotType,
+        isGoal,
+        \`soccer.GetShotDistanceToGoal\`(x, y) AS shotDistance,
+        \`soccer.GetShotAngleToGoal\`(x, y) AS shotAngle
       FROM
-        \`soccer.events\` Events
-      LEFT JOIN
-        \`soccer.matches\` Matches ON Events.matchId = Matches.wyId
-      LEFT JOIN
-        \`soccer.competitions\` Competitions ON Matches.competitionId = Competitions.wyId
-      LEFT JOIN
-        \`soccer.players\` Players ON Events.playerId = Players.wyId
-      LEFT JOIN
-        \`soccer.teams\` Teams ON Events.teamId = Teams.wyId
+        \`soccer.filtered_events\`
       WHERE
-        Competitions.name = 'World Cup' AND
-        (eventName = 'Shot' OR (eventName = 'Free Kick' AND subEventName = 'Free kick shot')) AND
-        (101 IN UNNEST(Events.tags.id))
+        competitionName = 'World Cup'
     )
-  )
-ORDER BY predictedGoalProb;
-"
+  );
+  "
+) &
+
+(
+  bq query --batch --use_legacy_sql=false "
+  SELECT
+    predicted_isGoal_probs[ORDINAL(1)].prob AS predictedGoalProb,
+    playerId,
+    CONCAT(Players.firstName, ' ', Players.lastName) AS playerName,
+    Teams.name AS teamName,
+    CAST(Matches.dateutc AS DATE) AS matchDate,
+    Matches.label AS match,
+    shotType,
+    \`soccer.GetShotDistanceToGoal\`(x, y) AS shotDistance,
+    \`soccer.GetShotAngleToGoal\`(x, y) AS shotAngle
+  FROM
+    ML.PREDICT(
+      MODEL \`soccer.xg_logistic_reg_model\`,
+      (
+        SELECT
+          *
+        FROM
+          \`soccer.filtered_events\`
+        WHERE
+          competitionName = 'World Cup' AND
+          (101 IN UNNEST(tags))
+      )
+    )
+  LEFT JOIN
+    \`soccer.players\` Players ON playerId = Players.wyId
+  LEFT JOIN
+    \`soccer.teams\` Teams ON teamId = Teams.wyId;
+  "
+) &
+wait
 
 echo "${RED}${BOLD}Congratulations${RESET}" "${WHITE}${BOLD}for${RESET}" "${GREEN}${BOLD}Completing the Lab !!!${RESET}"
 echo "${GREEN}${BOLD}Subscribe${RESET}" "${GREEN}${BOLD}for${RESET}" "${GREEN}${BOLD}Cloudgoodies channel for more Solution !!!${RESET}"
