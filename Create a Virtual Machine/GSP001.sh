@@ -25,9 +25,16 @@ RESET=$(tput sgr0)
 
 echo "${BG_BLUE}${BOLD}=== Starting Execution ===${RESET}"
 
-# Retrieve project ID and number
-export PROJECT_ID=$(gcloud config get-value project)
-export PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format="value(projectNumber)")
+# Set global variables
+export ZONE=${ZONE:-"us-central1-a"}  # Use ZONE if set; otherwise default to "us-central1-a"
+export DEVSHELL_PROJECT_ID=$(gcloud config get-value project)
+
+# Print the selected zone and project
+echo "${CYAN}Using Zone: ${ZONE}${RESET}"
+echo "${CYAN}Using Project ID: ${DEVSHELL_PROJECT_ID}${RESET}"
+
+# Retrieve project number
+export PROJECT_NUMBER=$(gcloud projects describe "${DEVSHELL_PROJECT_ID}" --format="value(projectNumber)")
 
 # Create the first VM instance
 echo "${GREEN}Creating VM instance 'gcelab'...${RESET}"
@@ -52,13 +59,17 @@ gcloud compute instances create gcelab \
 # Create the second VM instance
 echo "${YELLOW}Creating VM instance 'gcelab2'...${RESET}"
 gcloud compute instances create gcelab2 \
-    --machine-type=e2-medium \
-    --zone="${ZONE}"
+    --project="${DEVSHELL_PROJECT_ID}" \
+    --zone="${ZONE}" \
+    --machine-type=e2-medium
 
 # SSH into the first VM instance and install NGINX
 echo "${CYAN}Connecting to 'gcelab' and setting up NGINX...${RESET}"
-gcloud compute ssh --zone "${ZONE}" "gcelab" --project "${DEVSHELL_PROJECT_ID}" --quiet --command \
-    "sudo apt-get update && sudo apt-get install -y nginx && ps auwx | grep nginx"
+gcloud compute ssh "gcelab" \
+    --zone "${ZONE}" \
+    --project "${DEVSHELL_PROJECT_ID}" \
+    --quiet \
+    --command "sudo apt-get update && sudo apt-get install -y nginx && ps auwx | grep nginx"
 
 # Create a firewall rule to allow HTTP traffic
 echo "${MAGENTA}Creating firewall rule to allow HTTP traffic...${RESET}"
