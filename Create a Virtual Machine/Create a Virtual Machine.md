@@ -7,6 +7,9 @@
 ### Run the following Commands in CloudShell 
 
 ```
+export ZONE=
+```
+```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Create%20a%20Virtual%20Machine/GSP001.sh
 
 sudo chmod +x GSP001.sh
