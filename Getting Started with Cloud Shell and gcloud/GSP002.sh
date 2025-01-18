@@ -1,40 +1,35 @@
-# Define text and background colors
-BLACK=`tput setaf 0`
-RED=`tput setaf 1`
-GREEN=`tput setaf 2`
-YELLOW=`tput setaf 3`
-BLUE=`tput setaf 4`
-MAGENTA=`tput setaf 5`
-CYAN=`tput setaf 6`
-WHITE=`tput setaf 7`
+#!/bin/bash
 
-BG_BLACK=`tput setab 0`
-BG_RED=`tput setab 1`
-BG_GREEN=`tput setab 2`
-BG_YELLOW=`tput setab 3`
-BG_BLUE=`tput setab 4`
-BG_MAGENTA=`tput setab 5`
-BG_CYAN=`tput setab 6`
-BG_WHITE=`tput setab 7`
+# Add colors for better readability
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-BOLD=`tput bold`
-RESET=`tput sgr0`
+echo -e "${BLUE}======================================="
+echo -e "       Google Cloud Instance Setup      "
+echo -e "=======================================${NC}\n"
 
-#----------------------------------------------------start--------------------------------------------------#
+# Prompt for zone with cyan color
+echo -e "${CYAN}Please enter the zone where you want to create the instance:${NC}"
+read -p "ENTER ZONE: " ZONE
 
-# Display starting message with new colors
-echo "${CYAN}${BOLD}Initializing${RESET}" "${MAGENTA}${BOLD}Execution${RESET}"
-
-# Set region and zone configuration
-export REGION="${ZONE%-*}"
-gcloud config set compute/region $REGION
-gcloud config set compute/zone $ZONE
-
-# Get project ID and create an instance
-export PROJECT_ID=$(gcloud config get-value project)
+echo -e "\n${GREEN}Creating a compute instance named 'gcelab2' in zone '$ZONE'...${NC}"
 gcloud compute instances create gcelab2 --machine-type e2-medium --zone $ZONE
 
-# Display completion message with new colors
-echo "${BLUE}${BOLD}Well Done!${RESET}" "${YELLOW}${BOLD}You${RESET}" "${GREEN}${BOLD}Completed the Lab Successfully!!!${RESET}"
+echo -e "\n${GREEN}Adding tags 'http-server' and 'https-server' to the instance...${NC}"
+gcloud compute instances add-tags gcelab2 --zone $ZONE --tags http-server,https-server
 
-#-----------------------------------------------------end----------------------------------------------------------#
+echo -e "\n${GREEN}Creating a firewall rule to allow HTTP traffic on port 80...${NC}"
+gcloud compute firewall-rules create default-allow-http \
+  --direction=INGRESS \
+  --priority=1000 \
+  --network=default \
+  --action=ALLOW \
+  --rules=tcp:80 \
+  --source-ranges=0.0.0.0/0 \
+  --target-tags=http-server
+
+echo -e "\n${GREEN}Congratulations Lab is Completed!${NC}"
+echo -e "${BLUE}=======================================${NC}"
