@@ -6,9 +6,6 @@
 
 ### Run the following Commands in CloudShell 
 
-```
-export ZONE=
-```
 
 ```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Getting%20Started%20with%20Cloud%20Shell%20and%20gcloud/GSP002.sh
