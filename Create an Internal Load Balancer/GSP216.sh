@@ -23,64 +23,53 @@ BOLD=$(tput bold)
 RESET=$(tput sgr0)
 
 # Array of color codes excluding black and white
-TEXT_COLORS=("$RED" "$GREEN" "$YELLOW" "$BLUE" "$MAGENTA" "$CYAN")
-BG_COLORS=("$BG_RED" "$BG_GREEN" "$BG_YELLOW" "$BG_BLUE" "$BG_MAGENTA" "$BG_CYAN")
+TEXT_COLORS=("$GREEN" "$CYAN" "$BLUE" "$MAGENTA" "$YELLOW" "$RED")
+BG_COLORS=("$BG_GREEN" "$BG_BLUE" "$BG_CYAN" "$BG_MAGENTA" "$BG_YELLOW" "$BG_RED")
 
 # Pick random colors
-RANDOM_TEXT_COLOR=${TEXT_COLORS[RANDOM % ${#TEXT_COLORS[@]}]}
-RANDOM_BG_COLOR=${BG_COLORS[RANDOM % ${#BG_COLORS[@]}]}
+RANDOM_TEXT_COLOR=${TEXT_COLORS[$RANDOM % ${#TEXT_COLORS[@]}]}
+RANDOM_BG_COLOR=${BG_COLORS[$RANDOM % ${#BG_COLORS[@]}]}
 
-# Function to change zone automatically
+# Function to change the zone automatically
 change_zone_automatically() {
-    echo "${CYAN}${BOLD}Determining the secondary zone automatically...${RESET}"
-
     if [[ -z "$ZONE_1" ]]; then
         echo "${RED}Could not retrieve the current zone. Exiting.${RESET}"
         return 1
     fi
 
-    echo "${GREEN}Current Zone (ZONE_1): $ZONE_1${RESET}"
+    echo "${CYAN}Current Zone (ZONE_1): ${BOLD}${ZONE_1}${RESET}"
 
-    # Extract the zone prefix (everything except the last character)
     zone_prefix=${ZONE_1::-1}
     last_char=${ZONE_1: -1}
-
-    # Valid zone characters
     valid_chars=("b" "c" "d")
 
-    # Determine the next valid character
-    new_char=""
+    new_char=$last_char
     for char in "${valid_chars[@]}"; do
-        if [[ "$char" != "$last_char" ]]; then
+        if [[ $char != "$last_char" ]]; then
             new_char=$char
             break
         fi
     done
 
-    if [[ -z "$new_char" ]]; then
-        echo "${RED}Error: Unable to determine the new zone character.${RESET}"
-        return 1
-    fi
-
-    # Construct the new zone
     ZONE_2="${zone_prefix}${new_char}"
     export ZONE_2
-    echo "${YELLOW}New Zone (ZONE_2): $ZONE_2${RESET}"
+    echo "${YELLOW}New Zone (ZONE_2) is now set to: ${BOLD}${ZONE_2}${RESET}"
 }
 
-#----------------------------------------------------Start--------------------------------------------------#
+#----------------------------------------------------start--------------------------------------------------#
 
 echo "${RANDOM_BG_COLOR}${RANDOM_TEXT_COLOR}${BOLD}Starting Execution${RESET}"
 
 # Step 1: Retrieve default zone and region
-echo "${CYAN}${BOLD}Retrieving default zone and region.${RESET}"
+echo "${BLUE}Retrieving default zone and region.${RESET}"
 export ZONE_1=$(gcloud compute project-info describe \
     --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
+
 export REGION=$(gcloud compute project-info describe \
     --format="value(commonInstanceMetadata.items[google-compute-default-region])")
 
 # Step 2: Create firewall rule to allow HTTP traffic
-echo "${MAGENTA}${BOLD}Creating firewall rule to allow HTTP traffic.${RESET}"
+echo "${GREEN}Creating firewall rule to allow HTTP traffic.${RESET}"
 gcloud compute firewall-rules create app-allow-http \
     --direction=INGRESS \
     --priority=1000 \
@@ -91,7 +80,7 @@ gcloud compute firewall-rules create app-allow-http \
     --target-tags=lb-backend
 
 # Step 3: Create firewall rule to allow health checks
-echo "${RED}${BOLD}Creating firewall rule to allow health checks.${RESET}"
+echo "${CYAN}Creating firewall rule to allow health checks.${RESET}"
 gcloud compute firewall-rules create app-allow-health-check \
     --direction=INGRESS \
     --priority=1000 \
@@ -101,38 +90,91 @@ gcloud compute firewall-rules create app-allow-health-check \
     --source-ranges=130.211.0.0/22,35.191.0.0/16 \
     --target-tags=lb-backend
 
-# Call the function to determine the secondary zone
+# Step 4: Create instance template for subnet-a
+echo "${MAGENTA}Creating instance template for subnet-a.${RESET}"
+gcloud compute instance-templates create instance-template-1 \
+    --machine-type e2-micro \
+    --network my-internal-app \
+    --subnet subnet-a \
+    --tags lb-backend \
+    --metadata startup-script-url=gs://cloud-training/gcpnet/ilb/startup.sh \
+    --region="$REGION"
+
+# Step 5: Create instance template for subnet-b
+echo "${YELLOW}Creating instance template for subnet-b.${RESET}"
+gcloud compute instance-templates create instance-template-2 \
+    --machine-type e2-micro \
+    --network my-internal-app \
+    --subnet subnet-b \
+    --tags lb-backend \
+    --metadata startup-script-url=gs://cloud-training/gcpnet/ilb/startup.sh \
+    --region="$REGION"
+
+# Step 6: Determine and set the secondary zone
+echo "${RED}Determining and setting the secondary zone.${RESET}"
 change_zone_automatically
 
-#----------------------------------------------------Remove Files--------------------------------------------------#
+# Step 7: Create managed instance group 1
+echo "${BLUE}Creating managed instance group 1.${RESET}"
+gcloud beta compute instance-groups managed create instance-group-1 \
+    --project="$DEVSHELL_PROJECT_ID" \
+    --base-instance-name=instance-group-1 \
+    --size=1 \
+    --template=instance-template-1 \
+    --zone="$ZONE_1" \
+    --list-managed-instances-results=PAGELESS \
+    --no-force-update-on-repair
 
-echo "${BLUE}${BOLD}Cleaning up unnecessary files...${RESET}"
+# Step 8: Set autoscaling for instance group 1
+echo "${GREEN}Setting autoscaling for instance group 1.${RESET}"
+gcloud beta compute instance-groups managed set-autoscaling instance-group-1 \
+    --project="$DEVSHELL_PROJECT_ID" \
+    --zone="$ZONE_1" \
+    --cool-down-period=45 \
+    --max-num-replicas=5 \
+    --min-num-replicas=1 \
+    --mode=on \
+    --target-cpu-utilization=0.8
 
-remove_files() {
+# Step 9: Create managed instance group 2
+echo "${MAGENTA}Creating managed instance group 2.${RESET}"
+gcloud beta compute instance-groups managed create instance-group-2 \
+    --project="$DEVSHELL_PROJECT_ID" \
+    --base-instance-name=instance-group-2 \
+    --size=1 \
+    --template=instance-template-2 \
+    --zone="$ZONE_2" \
+    --list-managed-instances-results=PAGELESS \
+    --no-force-update-on-repair
+
+# Step 10: Set autoscaling for instance group 2
+echo "${CYAN}Setting autoscaling for instance group 2.${RESET}"
+gcloud beta compute instance-groups managed set-autoscaling instance-group-2 \
+    --project="$DEVSHELL_PROJECT_ID" \
+    --zone="$ZONE_2" \
+    --cool-down-period=45 \
+    --max-num-replicas=5 \
+    --min-num-replicas=1 \
+    --mode=on \
+    --target-cpu-utilization=0.8
+
+# Step 11: Create utility VM
+echo "${YELLOW}Creating utility VM.${RESET}"
+gcloud compute instances create utility-vm \
+    --zone="$ZONE_1" \
+    --machine-type e2-micro \
+    --network my-internal-app \
+    --subnet subnet-a \
+    --private-network-ip 10.10.20.50
+
+# Remove unnecessary files
+function remove_files() {
     for file in *; do
-        # Check if the file matches the patterns and is a regular file
-        if [[ "$file" =~ ^(gsp|arc|shell).* && -f "$file" ]]; then
+        if [[ "$file" == gsp* || "$file" == arc* || "$file" == shell* ]] && [[ -f "$file" ]]; then
             rm "$file"
-            echo "${GREEN}File removed: $file${RESET}"
+            echo "${MAGENTA}File removed: ${BOLD}$file${RESET}"
         fi
     done
 }
 
-# Call the remove_files function
 remove_files
-
-# Display a random congratulatory message
-function random_congrats() {
-    MESSAGES=(
-        "${GREEN}Congratulations on completing the lab! Great job!${RESET}"
-        "${CYAN}Well done! Your efforts paid off!${RESET}"
-        "${YELLOW}Amazing work! Keep it up!${RESET}"
-        "${MAGENTA}Fantastic! You’ve mastered this!${RESET}"
-        "${RED}Impressive! Your dedication is admirable!${RESET}"
-    )
-
-    RANDOM_INDEX=$((RANDOM % ${#MESSAGES[@]}))
-    echo -e "${BOLD}${MESSAGES[$RANDOM_INDEX]}${RESET}"
-}
-
-random_congrats
