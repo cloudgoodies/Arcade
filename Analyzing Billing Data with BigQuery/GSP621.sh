@@ -21,29 +21,25 @@ bq query --use_legacy_sql=false \
 
 bq query --use_legacy_sql=false \
 'SELECT
-  project.name as Project_Name,
-  service.description as Service,
-  location.country as Country,
-  cost as Cost
+ project.name as Project_Name,
+ service.description as Service,
+ location.country as Country,
+ cost as Cost
 FROM `billing_dataset.enterprise_billing`;'
 
 bq query --use_legacy_sql=false \
 'SELECT
-  project.name as Project_Name,
-  service.description as Service,
-  location.country as Country,
-  cost as Cost
+ project.name as Project_Name,
+ service.description as Service,
+ location.country as Country,
+ cost as Cost
 FROM `billing_dataset.enterprise_billing`;'
 
 bq query --use_legacy_sql=false \
-'SELECT project.id, count(*) as count 
-FROM `billing_dataset.enterprise_billing` 
-GROUP BY project.id'
+'SELECT project.id, count(*) as count from `billing_dataset.enterprise_billing` GROUP BY project.id'
 
 bq query --use_legacy_sql=false \
-'SELECT ROUND(SUM(cost),2) as Cost, project.name 
-FROM `billing_dataset.enterprise_billing` 
-GROUP BY project.name'
+'SELECT ROUND(SUM(cost),2) as Cost, project.name from `billing_dataset.enterprise_billing` GROUP BY project.name'
 
 # Display completion message
 echo "${SEPARATOR}"
