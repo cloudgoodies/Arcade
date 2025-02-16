@@ -7,10 +7,6 @@
 ### Run the following Commands in CloudShell 
 
 ```
-export REGION=
-```
-
-```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Implementing%20Cloud%20SQL/Implementing.sh
 
 sudo chmod +x Implementing.sh
