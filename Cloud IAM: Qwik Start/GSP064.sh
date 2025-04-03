@@ -16,6 +16,8 @@ read -p "${YELLOW_COLOR}Enter USERNAME 2: ${NO_COLOR}" USERNAME_2
 # Set the storage bucket and enable uniform bucket-level access
 gsutil mb -l us -b on gs://$DEVSHELL_PROJECT_ID
 
+# Create a sample file and write content to it
+echo "File Name" > sample.txt
 
 # Upload the sample file to the specified bucket
 gsutil cp sample.txt gs://$DEVSHELL_PROJECT_ID
