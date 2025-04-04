@@ -7,6 +7,10 @@
 ### Run the following Commands in CloudShell 
 
 ```
+export REGION=
+```
+
+```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Cloud%20Storage%3A%20Qwik%20Start%20-%20Cloud%20Console/GSP073.sh
 
 sudo chmod +x GSP073.sh
