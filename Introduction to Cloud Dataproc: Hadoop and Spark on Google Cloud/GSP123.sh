@@ -1,123 +1,102 @@
+#!/bin/bash
+
+BLACK_TEXT=$'\033[0;90m'
+RED_TEXT=$'\033[0;91m'
+GREEN_TEXT=$'\033[0;92m'
+YELLOW_TEXT=$'\033[0;93m'
+BLUE_TEXT=$'\033[0;94m'
+MAGENTA_TEXT=$'\033[0;95m'
+CYAN_TEXT=$'\033[0;96m'
+WHITE_TEXT=$'\033[0;97m'
+
+NO_COLOR=$'\033[0m'
+RESET_FORMAT=$'\033[0m'
+BOLD_TEXT=$'\033[1m'
+UNDERLINE_TEXT=$'\033[4m'
+
 clear
 
-#!/bin/bash
-# Define color variables
+echo "${GREEN_TEXT}${BOLD_TEXT}         STARTING EXECUTION...  ${RESET_FORMAT}"
 
-BLACK=`tput setaf 0`
-RED=`tput setaf 1`
-GREEN=`tput setaf 2`
-YELLOW=`tput setaf 3`
-BLUE=`tput setaf 4`
-MAGENTA=`tput setaf 5`
-CYAN=`tput setaf 6`
-WHITE=`tput setaf 7`
 
-BG_BLACK=`tput setab 0`
-BG_RED=`tput setab 1`
-BG_GREEN=`tput setab 2`
-BG_YELLOW=`tput setab 3`
-BG_BLUE=`tput setab 4`
-BG_MAGENTA=`tput setab 5`
-BG_CYAN=`tput setab 6`
-BG_WHITE=`tput setab 7`
 
-BOLD=`tput bold`
-RESET=`tput sgr0`
+echo -e "${YELLOW_TEXT}${BOLD_TEXT}Please enter the cluster name:${RESET_FORMAT}"
+read -p "Cluster Name: " CLUSTER_NAME
+export CLUSTER_NAME
 
-# Array of color codes excluding black and white
-TEXT_COLORS=($RED $GREEN $YELLOW $BLUE $MAGENTA $CYAN)
-BG_COLORS=($BG_RED $BG_GREEN $BG_YELLOW $BG_BLUE $BG_MAGENTA $BG_CYAN)
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Authenticating your GCP account...${RESET_FORMAT}"
+gcloud auth list
 
-# Pick random colors
-RANDOM_TEXT_COLOR=${TEXT_COLORS[$RANDOM % ${#TEXT_COLORS[@]}]}
-RANDOM_BG_COLOR=${BG_COLORS[$RANDOM % ${#BG_COLORS[@]}]}
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Fetching default zone and region from project metadata...${RESET_FORMAT}"
+export ZONE=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
 
-#----------------------------------------------------start--------------------------------------------------#
+export REGION=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-region])")
 
-echo "${RANDOM_BG_COLOR}${RANDOM_TEXT_COLOR}${BOLD}Starting Execution${RESET}"
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Fetching project number...${RESET_FORMAT}"
+PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
 
-# Step 1: Get the project ID
-echo "${GREEN}${BOLD}Fetching PROJECT_ID${RESET}"
-export PROJECT_ID=$(gcloud config get-value project)
-
-# Step 2: Get the project number
-echo "${GREEN}${BOLD}Fetching PROJECT_NUMBER${RESET}"
-export PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} \
-    --format="value(projectNumber)")
-
-# Step 3: Get the default zone
-echo "${GREEN}${BOLD}Fetching ZONE${RESET}"
-export ZONE=$(gcloud compute project-info describe \
---format="value(commonInstanceMetadata.items[google-compute-default-zone])")
-
-# Step 4: Get the default region
-echo "${GREEN}${BOLD}Fetching REGION${RESET}"
-export REGION=$(gcloud compute project-info describe \
---format="value(commonInstanceMetadata.items[google-compute-default-region])")
-
-# Step 5: Assign storage admin role
-echo "${GREEN}${BOLD}Assigning Storage Admin Role${RESET}"
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Adding IAM policy binding for storage admin role...${RESET_FORMAT}"
 gcloud projects add-iam-policy-binding $DEVSHELL_PROJECT_ID \
-    --member=serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com \
-    --role=roles/storage.admin
+  --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+  --role="roles/storage.admin"
 
-# Step 6: Create Dataproc cluster
-echo "${GREEN}${BOLD}Creating Dataproc Cluster${RESET}"
-gcloud dataproc clusters create qlab \
-    --enable-component-gateway \
-    --region $REGION \
-    --zone $ZONE \
-    --master-machine-type e2-standard-4 \
-    --master-boot-disk-type pd-balanced \
-    --master-boot-disk-size 100 \
-    --num-workers 2 \
-    --worker-machine-type e2-standard-2 \
-    --worker-boot-disk-size 100 \
-    --image-version 2.2-debian12 \
-    --project $DEVSHELL_PROJECT_ID
+echo -e "${YELLOW_TEXT}${BOLD_TEXT}Waiting for 60 seconds to ensure IAM policy changes propagate...${RESET_FORMAT}"
+sleep 60
 
-# Step 7: Submit Spark job
-echo "${GREEN}${BOLD}Submitting Spark Job${RESET}"
+#!/bin/bash
+
+echo -e "${CYAN_TEXT}${BOLD_TEXT}Cluster Name:${RESET_FORMAT} $CLUSTER_NAME"
+echo -e "${CYAN_TEXT}${BOLD_TEXT}Zone:${RESET_FORMAT} $ZONE"
+echo -e "${CYAN_TEXT}${BOLD_TEXT}Region:${RESET_FORMAT} $REGION"
+
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Creating Dataproc cluster...${RESET_FORMAT}"
+echo -e "${CYAN_TEXT}This may take a few minutes. Please wait.${RESET_FORMAT}"
+
+cluster_function() {
+  gcloud dataproc clusters create "$CLUSTER_NAME" \
+  --region "$REGION" \
+  --zone "$ZONE" \
+  --master-machine-type n1-standard-2 \
+  --worker-machine-type n1-standard-2 \
+  --num-workers 2 \
+  --worker-boot-disk-size 100 \
+  --worker-boot-disk-type pd-standard \
+  --no-address
+}
+
+cp_success=false
+
+while [ "$cp_success" = false ]; do
+  cluster_function
+  exit_status=$?
+
+  if [ "$exit_status" -eq 0 ]; then
+  echo -e "${GREEN_TEXT}${BOLD_TEXT}Cluster created successfully!${RESET_FORMAT}"
+  cp_success=true
+  else
+  echo -e "${RED_TEXT}${BOLD_TEXT}Cluster creation failed!${RESET_FORMAT}"
+
+  if gcloud dataproc clusters describe "$CLUSTER_NAME" --region "$REGION" &>/dev/null; then
+    echo -e "${YELLOW_TEXT}${BOLD_TEXT}Cluster already exists. Deleting it...${RESET_FORMAT}"
+    gcloud dataproc clusters delete "$CLUSTER_NAME" --region "$REGION" --quiet
+    echo -e "${CYAN_TEXT}Cluster deleted. Retrying in 10 seconds...${RESET_FORMAT}"
+  else
+    echo -e "${RED_TEXT}${BOLD_TEXT}Cluster does not exist. Retrying in 10 seconds...${RESET_FORMAT}"
+  fi
+  sleep 10
+  fi
+done
+
+echo -e "${MAGENTA_TEXT}${BOLD_TEXT}Submitting Spark job to the cluster...${RESET_FORMAT}"
 gcloud dataproc jobs submit spark \
-    --cluster qlab \
-    --region $REGION \
-    --class org.apache.spark.examples.SparkPi \
-    --jars file:///usr/lib/spark/examples/jars/spark-examples.jar \
-    -- 1000
+  --project $DEVSHELL_PROJECT_ID \
+  --region $REGION \
+  --cluster $CLUSTER_NAME \
+  --class org.apache.spark.examples.SparkPi \
+  --jars file:///usr/lib/spark/examples/jars/spark-examples.jar \
+  -- 1000
+
+echo "${GREEN_TEXT}${BOLD_TEXT} Congratulation   LAB COMPLETED SUCCESSFULLY!!   ${RESET_FORMAT}"
+
 
 echo
-
-# Function to display a random congratulatory message
-function random_congrats() {
-    MESSAGES=(
-        "${GREEN}Congratulations For Completing The Lab!!${RESET}"
-      
-    )
-
-    RANDOM_INDEX=$((RANDOM % ${#MESSAGES[@]}))
-    echo -e "${BOLD}${MESSAGES[$RANDOM_INDEX]}"
-}
-
-# Display a random congratulatory message
-random_congrats
-
-echo -e "\n"  # Adding one blank line
-
-cd
-
-remove_files() {
-    # Loop through all files in the current directory
-    for file in *; do
-        # Check if the file name starts with "gsp", "arc", or "shell"
-        if [[ "$file" == gsp* || "$file" == arc* || "$file" == shell* ]]; then
-            # Check if it's a regular file (not a directory)
-            if [[ -f "$file" ]]; then
-                # Remove the file and echo the file name
-                rm "$file"
-                echo "File removed: $file"
-            fi
-        fi
-    done
-}
-
-remove_files
