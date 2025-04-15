@@ -183,4 +183,3 @@ echo "${MAGENTA_TEXT}${BOLD_TEXT}Running the load generator script to simulate t
 
 # Completion Message
 echo -e "${RED_TEXT}${BOLD_TEXT}Congratulation Completed this Lab!!${RESET_FORMAT}"
-echo
