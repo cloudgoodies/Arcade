@@ -1,4 +1,4 @@
-#  Measuring and Improving Speech Accuracy Cloud Spanner: Qwik Start
+#  Create a Virtual Machine
 
 
 #### ⚠️ Disclaimer :
@@ -7,11 +7,11 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Measuring%20and%20Improving%20Speech%20Accuracy/GSP758.sh
+curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Measuring%20and%20Improving%20Speech%20Accuracy/GSP001.sh
 
-sudo chmod +x GSP758.sh
+sudo chmod +x GSP001.sh
 
-./GSP758.sh
+./GSP001.sh
 ```
 
 ### Congratulations 🎉 for completing the Lab !
