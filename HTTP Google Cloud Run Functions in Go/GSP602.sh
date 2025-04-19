@@ -69,7 +69,7 @@ while [ "$deploy_success" = false ]; do
     deploy_success=true
   else
     echo "${RED_TEXT}${BOLD_TEXT}Deployment failed. Retrying in 10 seconds...${RESET_FORMAT}"
-    echo "${YELLOW_TEXT}${BOLD_TEXT}Meanwhile subscribe Arcade Crew! ${RESET_FORMAT}"
+    
     sleep 10
   fi
 done
