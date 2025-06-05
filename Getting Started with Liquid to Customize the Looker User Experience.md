@@ -5,9 +5,6 @@
 
 <div>
 
-📋 **Lab Link:** [Open](https://www.cloudskillsboost.google/focuses/21217?parent=catalog)  
-<!-- 🏆 **SkillBadge Link:** [Open](https://www.cloudskillsboost.google/course_templates/623) -->
-🏆 **SkillBadge Link:** This Lab is not a part of any SkillBadge.
 
 </div>
 
