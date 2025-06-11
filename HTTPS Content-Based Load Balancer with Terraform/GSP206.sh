@@ -66,7 +66,7 @@ rm -rf variables.tf
 # Step 5: Download the Terraform files
 echo "${GREEN}${BOLD}Downloading Terraform files...${RESET}"
 wget https://raw.githubusercontent.com/QUICK-GCP-LAB/2-Minutes-Labs-Solutions/main/HTTPS%20Content-Based%20Load%20Balancer%20with%20Terraform/variables.tf
-wget https://raw.githubusercontent.com/QUICK-GCP-LAB/2-Minutes-Labs-Solutions/main/HTTPS%20Content-Based%20Load%20Balancer%20with%20Terraform/main.tf
+wget https://github.com/cloudgoodies/Arcade/blob/main/HTTPS%20Content-Based%20Load%20Balancer%20with%20Terraform/main.tf
 
 # Step 6: Update the Terraform files with the region variables
 echo "${MAGENTA}${BOLD}Updating Terraform files with region variables...${RESET}"
