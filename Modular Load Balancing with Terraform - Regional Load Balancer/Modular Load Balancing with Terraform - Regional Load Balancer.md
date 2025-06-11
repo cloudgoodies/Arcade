@@ -7,7 +7,7 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/headsmain/Modular%20Load%20Balancing%20with%20Terraform%20-%20Regional%20Load%20Balancer/GSP191.sh
+curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Modular%20Load%20Balancing%20with%20Terraform%20-%20Regional%20Load%20Balancer/GSP191.sh
 
 sudo chmod +x GSP191.sh
 
