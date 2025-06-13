@@ -11,7 +11,7 @@ export PROJECT_ID=$(gcloud config list --format 'value(core.project)')
 
 gsutil mb gs://$PROJECT_ID
 
-curl -O https://github.com/Techcps/Google-Cloud-Skills-Boost/blob/main/Extract%20Analyze%20and%20Translate%20Text%20from%20Images%20with%20the%20Cloud%20ML%20APIs/sign.jpg
+curl -O https://github.com/cloudgoodies/Arcade/blob/main/Extract%2C%20Analyze%2C%20and%20Translate%20Text%20from%20Images%20with%20the%20Cloud%20ML%20APIs/sign.jpg
 
 gsutil cp sign.jpg gs://$PROJECT_ID/sign.jpg
 
