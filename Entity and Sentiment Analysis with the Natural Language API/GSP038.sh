@@ -24,10 +24,8 @@ RESET=`tput sgr0`
 #----------------------------------------------------start--------------------------------------------------#
 
 
-echo -e "${GREEN}${BOLD_TEXT}            Starting Executing....         ${RESET_FORMAT}"
+echo -e "${GREEN}${BOLD}            Starting Executing....         ${RESET_FORMAT}"
 
-
-echo "${YELLOW}${BOLD}... Starting Execution ...${RESET}"
 
 export ZONE=$(gcloud compute project-info describe \
 --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
