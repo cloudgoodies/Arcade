@@ -1,80 +1,30 @@
+#!/bin/bash
 
-gcloud auth list
+echo "           Starting Executing....                "
 
-export ZONE=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
+# Prompt user for region and zone
+read -p ">> Enter the region (e.g. us-central1): " REGION
+read -p ">> Enter the zone (e.g. us-central1-a): " ZONE
 
-export REGION=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-region])")
+VM_NAME="my-vm-1"
+REGION="europe-west1"
+ZONE="europe-west1-b"
+MACHINE_TYPE="e2-standard-2"
+IMAGE_PROJECT="ubuntu-os-cloud"
+IMAGE_NAME="ubuntu-2404-minimal-v20240606"  # As of June 2024; adjust if newer needed
 
-export PROJECT_ID=$(gcloud config get-value project)
+# Optional: Set gcloud config defaults
+gcloud config set compute/region $REGION
+gcloud config set compute/zone $ZONE
 
-gcloud config set compute/zone "$ZONE"
-gcloud config set compute/region "$REGION"
+# Create the VM instance with Ubuntu 24.04 LTS Minimal
+gcloud compute instances create $VM_NAME \
+  --zone=$ZONE \
+  --machine-type=$MACHINE_TYPE \
+  --image=$IMAGE_NAME \
+  --image-project=$IMAGE_PROJECT \
+  --boot-disk-size=10GB \
+  --boot-disk-type=pd-balanced \
+  --boot-disk-device-name=$VM_NAME
 
-gcloud compute instances create my-vm-1 --project=$DEVSHELL_PROJECT_ID --zone=$ZONE --machine-type=e2-standard-2 --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud --boot-disk-size=10GB --boot-disk-device-name=my-vm-1 --boot-disk-type=pd-balanced
-
-
-sleep 60
-
-cat > techcps.sh <<'EOF_CP'
-
-sudo apt update
-
-curl -LO https://github.com/eosio/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubuntu-20.04_amd64.deb
-
-sudo apt install -y ./eosio_2.1.0-1-ubuntu-20.04_amd64.deb
-
-nodeos --version
-
-cleos version client
-
-keosd -v
-
-nodeos -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --contracts-console >> nodeos.log 2>&1 &
-
-tail -n 15 nodeos.log
-
-cleos wallet create --name my_wallet --file my_wallet_password
-
-cat my_wallet_password
-
-export wallet_password=$(cat my_wallet_password)
-echo $wallet_password
-
-cleos wallet open --name my_wallet
-
-cleos wallet unlock --name my_wallet --password $wallet_password
-
-cleos wallet import --name my_wallet --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
-
-curl -LO https://github.com/eosio/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-20.04_amd64.deb
-
-sudo apt install -y ./eosio.cdt_1.8.1-1-ubuntu-20.04_amd64.deb
-
-eosio-cpp --version
-
-cleos wallet open --name my_wallet
-
-export wallet_password=$(cat my_wallet_password)
-echo $wallet_password
-
-cleos wallet unlock --name my_wallet --password $wallet_password
-
-cleos create key --file my_keypair1
-
-cat my_keypair1
-
-user_private_key=$(grep "Private key:" my_keypair1 | cut -d ' ' -f 3)
-
-user_public_key=$(grep "Public key:" my_keypair1 | cut -d ' ' -f 3)
-
-cleos wallet import --name my_wallet --private-key $user_private_key
-
-cleos create account eosio bob $user_public_key
-
-EOF_CP
-
-
-gcloud compute scp techcps.sh my-vm-1:/tmp --project=$DEVSHELL_PROJECT_ID --zone=$ZONE --quiet
-
-gcloud compute ssh my-vm-1 --project=$DEVSHELL_PROJECT_ID --zone=$ZONE --quiet --command="bash /tmp/techcps.sh"
-
+echo "✅ VM $VM_NAME creation initiated in region $REGION, zone $ZONE using image $IMAGE_NAME."
