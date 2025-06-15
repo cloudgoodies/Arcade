@@ -7,8 +7,8 @@ read -p ">> Enter the region (e.g. us-central1): " REGION
 read -p ">> Enter the zone (e.g. us-central1-a): " ZONE
 
 VM_NAME="my-vm-1"
-REGION="europe-west1"
-ZONE="europe-west1-b"
+REGION="us-east4"
+ZONE="us-east4"
 MACHINE_TYPE="e2-standard-2"
 IMAGE_PROJECT="ubuntu-os-cloud"
 IMAGE_NAME="ubuntu-2404-minimal-v20240606"  # As of June 2024; adjust if newer needed
