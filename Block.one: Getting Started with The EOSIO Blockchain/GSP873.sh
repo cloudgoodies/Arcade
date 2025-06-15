@@ -16,16 +16,16 @@ IMAGE_FAMILY="ubuntu-2004-lts"
 gcloud config set compute/region "$REGION"
 gcloud config set compute/zone "$ZONE"
 
-# Create the VM with required configuration
+# Create the VM
 echo "🛠️  Creating VM..."
 if gcloud compute instances create "$VM_NAME" \
-  --zone="$ZONE" \
   --machine-type="$MACHINE_TYPE" \
   --image-family="$IMAGE_FAMILY" \
   --image-project="$IMAGE_PROJECT" \
   --boot-disk-type=pd-balanced \
   --boot-disk-size=10GB \
-  --boot-disk-device-name="$VM_NAME"; then
+  --boot-disk-device-name="$VM_NAME" \
+  --zone="$ZONE"; then
     echo "✅ VM '$VM_NAME' successfully created in $ZONE using Ubuntu 20.04 LTS."
 else
     echo "❌ Failed to create VM. Please check your configuration and try again."
