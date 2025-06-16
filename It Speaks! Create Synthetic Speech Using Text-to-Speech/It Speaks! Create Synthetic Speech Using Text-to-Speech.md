@@ -8,6 +8,7 @@
 
 ```
 curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/It%20Speaks!%20Create%20Synthetic%20Speech%20Using%20Text-to-Speech/GSP222.sh
+
 sudo chmod +x GSP222.sh
 
 ./GSP222.sh
