@@ -18,4 +18,4 @@ gcloud iam service-accounts keys create tts-qwiklab.json --iam-account tts-qwikl
 
 export GOOGLE_APPLICATION_CREDENTIALS=tts-qwiklab.json
 
-echo -e "Congratulation to Complete this Lab!!"
+
