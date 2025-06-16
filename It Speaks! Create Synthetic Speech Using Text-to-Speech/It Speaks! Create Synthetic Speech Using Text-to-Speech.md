@@ -7,11 +7,13 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/It%20Speaks!%20Create%20Synthetic%20Speech%20Using%20Text-to-Speech/GSP222.sh
+curl -L -o GSP222.sh \
+"https://raw.githubusercontent.com/cloudgoodies/Arcade/main/It%20Speaks%21%20Create%20Synthetic%20Speech%20Using%20Text-to-Speech/GSP222.sh"
 
-sudo chmod +x GSP222.sh
+chmod +x GSP222.sh        
 
 ./GSP222.sh
+
 ```
 
 ### Congratulations 🎉 for completing the Lab !
