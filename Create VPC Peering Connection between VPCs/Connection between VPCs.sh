@@ -3,7 +3,7 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Start Execution${NC}"
+echo -e "${GREEN}Starting Execution${NC}"
 
 gcloud auth list
 export ZONE=$(gcloud compute project-info describe --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
