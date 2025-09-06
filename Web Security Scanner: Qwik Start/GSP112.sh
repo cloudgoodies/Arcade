@@ -67,7 +67,3 @@ gcloud app deploy --quiet
 echo
 echo "${GREEN_TEXT}${BOLD_TEXT} Congrtulation for complete this Lab and Subscribe Cloudgoodies for more video${RESET_FORMAT}"
 
-
-echo
-echo "${GREEN_TEXT}${BOLD_TEXT}${UNDERLINE_TEXT}https://www.youtube.com/@TechCode9${RESET_FORMAT}"
-echo
