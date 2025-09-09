@@ -7,7 +7,7 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/headsmain/Deploy%20a%20Modern%20Web%20App%20connected%20to%20a%20Cloud%20Spanner%20Instance/GSP1051.sh
+curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Deploy%20a%20Modern%20Web%20App%20connected%20to%20a%20Cloud%20Spanner%20Instance/GSP1051.sh
 
 sudo chmod +x GSP1051.sh
 
