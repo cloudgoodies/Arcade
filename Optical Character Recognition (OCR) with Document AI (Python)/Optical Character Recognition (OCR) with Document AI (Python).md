@@ -7,10 +7,12 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Optical%20Character%20Recognition%20(OCR)%20with%20Document%20AI%20(Python)/GSP1138.sh
-sudo chmod +x GSP1138.sh
+curl -L "https://raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Optical%20Character%20Recognition%20(OCR)%20with%20Document%20AI%20(Python)/GSP1138.sh" -o GSP1138.sh
+
+chmod +x GSP1138.sh
 
 ./GSP1138.sh
+
 ```
 
 ### Congratulations 🎉 for completing the Lab !
