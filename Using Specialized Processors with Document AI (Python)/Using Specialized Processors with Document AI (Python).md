@@ -7,11 +7,14 @@
 ### Run the following Commands in CloudShell 
 
 ```
-curl -LO raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Using%20Specialized%20Processors%20with%20Document%20AI%20(Python)/GSP1140.sh
+curl -LO "https://raw.githubusercontent.com/cloudgoodies/Arcade/refs/heads/main/Using%20Specialized%20Processors%20with%20Document%20AI%20(Python)/GSP1140.sh"
 
-sudo chmod +x GSP1140.sh
+mv "Using Specialized Processors with Document AI (Python)/GSP1140.sh" GSP1140.sh
+
+chmod +x GSP1140.sh
 
 ./GSP1140.sh
+
 ```
 
 ### Congratulations 🎉 for completing the Lab !
